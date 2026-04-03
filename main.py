@@ -1,9 +1,28 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import random
+# ---------------- CONFIG ----------------
+WIDTH = 100
+HEIGHT = 100
 
-bird_height = 90
-Key_pressed = False
+BIRD_X = 10
+GRAVITY = 0.5
+FLAP_STRENGTH = 8
+
+PIPE_SPEED = 0.6
+PIPE_WIDTH = 6
+INITIAL_GAP = 30
+MIN_GAP = 12
+
+NUM_PIPES = 5
+PIPE_SPACING = 25
+
+# ---------------- STATE ----------------
+bird_y = 50
+velocity = 0
+key_pressed = False
+game_over = False
+score = 0
 
 
 def on_key(event):
