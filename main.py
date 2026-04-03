@@ -77,6 +77,24 @@ def update_pipes(frame):
 
     return gap_size
 
+
+def check_collision(gap_size):
+    global bird_y
+
+    for pipe in pipes:
+        if abs(pipe["x"] - BIRD_X) < PIPE_WIDTH:
+            gap_top = pipe["gap_y"] + gap_size / 2
+            gap_bottom = pipe["gap_y"] - gap_size / 2
+
+            if bird_y > gap_top or bird_y < gap_bottom:
+                return True
+
+    if bird_y <= 0 or bird_y >= HEIGHT:
+        return True
+
+    return False
+
+
 def main():
     global bird_height, Key_pressed
 
