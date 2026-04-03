@@ -95,76 +95,83 @@ def check_collision(gap_size):
     return False
 
 
+# ---------------- MAIN ----------------
 def main():
-    global bird_height, Key_pressed
+    global bird_y, velocity, key_pressed, game_over
 
-    # X positions
-    bars = np.array([10, 20, 30, 40, 50, 60], dtype=float)
-
-    width = 3
-    speed = 0.3
-
-    # Heights
-    bar_height = np.array([40, 30, 70, 10, 20, 40], dtype=float)
-    gap = 20  # constant gap
-
-    fig, ax = plt.subplots(figsize=(8, 6))
-    point = ax.scatter(2, bird_height, color="yellow")
-
-    ax.set_xlim(0, 70)
-    ax.set_ylim(0, 100)
-
-    # Initial bars
-    bottom_rects = ax.bar(bars, bar_height, width=width, color="green")
-    gap_rects = ax.bar(bars, [gap]*len(bars), bottom=bar_height, width=width, color="white")
-    top_rects = ax.bar(
-        bars,
-        100 - (bar_height + gap),
-        bottom=bar_height + gap,
-        width=width,
-        color="green",
-    )
+    fig, ax = plt.subplots(figsize=(6, 8))
+    ax.set_xlim(0, WIDTH)
+    ax.set_ylim(0, HEIGHT)
 
     fig.canvas.mpl_connect("key_press_event", on_key)
 
+    # visuals
+    bird = ax.scatter(BIRD_X, bird_y, s=200, color="yellow")
+    text = ax.text(2, 95, "", fontsize=12)
+
+    init_pipes()
+
+    frame = 0
+
     try:
         while True:
-            # ---------------- Bird physics ----------------
-            bird_height -= 0.4
-            bird_height = max(0, bird_height)
+            frame += 1
 
-            if Key_pressed:
-                bird_height += 10
-                Key_pressed = False
+            if not game_over:
+                # ---------- Bird Physics ----------
+                velocity -= GRAVITY
 
-            point.set_offsets([[2, bird_height]])
+                if key_pressed:
+                    velocity = FLAP_STRENGTH
+                    key_pressed = False
 
-            # ---------------- Bar movement ----------------
-            bars -= speed
+                bird_y += velocity
+                bird_y = max(0, min(HEIGHT, bird_y))
 
-            for i in range(len(bars)):
-                if bars[i] < 0:
-                    bars[i] = 70  # reset to right
-                    bar_height[i] = random.randint(10, 70)
+                # ---------- Pipes ----------
+                gap_size = update_pipes(frame)
 
-            # ---------------- Update bars ----------------
-            for i, rect in enumerate(bottom_rects):
-                rect.set_x(bars[i])
-                rect.set_height(bar_height[i])
+                # ---------- Collision ----------
+                if check_collision(gap_size):
+                    game_over = True
 
-            for i, rect in enumerate(gap_rects):
-                rect.set_x(bars[i])
-                rect.set_y(bar_height[i])
+            # ---------- Render ----------
+            ax.clear()
+            ax.set_xlim(0, WIDTH)
+            ax.set_ylim(0, HEIGHT)
 
-            for i, rect in enumerate(top_rects):
-                rect.set_x(bars[i])
-                rect.set_y(bar_height[i] + gap)
-                rect.set_height(100 - (bar_height[i] + gap))
+            # draw bird
+            ax.scatter(BIRD_X, bird_y, s=200, color="yellow")
+
+            # draw pipes
+            for pipe in pipes:
+                x = pipe["x"]
+                gap_y = pipe["gap_y"]
+
+                gap_top = gap_y + gap_size / 2
+                gap_bottom = gap_y - gap_size / 2
+
+                # bottom pipe
+                ax.bar(x, gap_bottom, width=PIPE_WIDTH)
+
+                # top pipe
+                ax.bar(
+                    x,
+                    HEIGHT - gap_top,
+                    bottom=gap_top,
+                    width=PIPE_WIDTH,
+                )
+
+            # UI
+            ax.text(2, 95, f"Score: {score}")
+
+            if game_over:
+                ax.text(30, 50, "GAME OVER\nPress R to Restart")
 
             plt.pause(0.01)
 
     except KeyboardInterrupt:
-        print("Game stopped")
+        print("Exited")
 
 
 if __name__ == "__main__":
