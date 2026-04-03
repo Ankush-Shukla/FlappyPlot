@@ -127,8 +127,8 @@ def check_collision(gap_size, height):
         pipe_left = pipe["x"]
         pipe_right = pipe["x"] + PIPE_WIDTH
         if pipe_left <= BIRD_X <= pipe_right:
-            gap_top = min(height, gap_y + gap_size / 2)
-            gap_bottom = max(0, gap_y - gap_size / 2)
+            gap_top = pipe["gap_y"] + gap_size / 2
+            gap_bottom = pipe["gap_y"] - gap_size / 2
 
             if y > gap_top or y < gap_bottom:
                 return True
@@ -145,7 +145,7 @@ def main():
     ax.set_aspect('equal', adjustable='box')
     ax.set_xlim(0, 100)
     ax.set_ylim(0, 100)
-    ax.set_autoscale_on(False)
+
     fig.canvas.mpl_connect("key_press_event", on_key)
 
     init_pipes(100, 100)
@@ -198,8 +198,8 @@ def main():
                 x = pipe["x"]
                 gap_y = pipe["gap_y"]
 
-                gap_top = gap_y + gap_size / 2
-                gap_bottom = gap_y - gap_size / 2
+                gap_top = min(height, gap_y + gap_size / 2)
+                gap_bottom = max(0, gap_y - gap_size / 2)
 
                 ax.bar(x, gap_bottom, width=PIPE_WIDTH)
                 ax.bar(
