@@ -55,6 +55,27 @@ def init_pipes():
         gap_y = random.randint(30, 70)
         pipes.append({"x": x, "gap_y": gap_y})
 
+def update_pipes(frame):
+    global score
+
+    # difficulty scaling
+    gap_size = max(MIN_GAP, INITIAL_GAP - frame * 0.02)
+
+    for pipe in pipes:
+        pipe["x"] -= PIPE_SPEED
+
+        # scoring
+        if pipe["x"] < BIRD_X and not pipe.get("passed"):
+            pipe["passed"] = True
+            score += 1
+
+        # reset pipe (controlled loop)
+        if pipe["x"] < 10:
+            pipe["x"] = WIDTH
+            pipe["gap_y"] = random.randint(30, 70)
+            pipe["passed"] = False
+
+    return gap_size
 
 def main():
     global bird_height, Key_pressed
