@@ -26,9 +26,34 @@ score = 0
 
 
 def on_key(event):
-    global Key_pressed
+    global key_pressed, game_over, bird_y, velocity, score
+
     if event.key == "x":
-        Key_pressed = True
+        key_pressed = True
+
+    if event.key == "r" and game_over:
+        reset_game()
+
+def reset_game():
+    global bird_y, velocity, game_over, score, pipes
+
+    bird_y = 50
+    velocity = 0
+    game_over = False
+    score = 0
+
+    pipes.clear()
+    init_pipes()
+
+# ---------------- PIPE SYSTEM ----------------
+pipes = []
+
+
+def init_pipes():
+    for i in range(NUM_PIPES):
+        x = WIDTH + i * PIPE_SPACING
+        gap_y = random.randint(30, 70)
+        pipes.append({"x": x, "gap_y": gap_y})
 
 
 def main():
