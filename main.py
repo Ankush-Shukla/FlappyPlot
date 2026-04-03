@@ -1,95 +1,133 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import random
+
 # ---------------- CONFIG ----------------
-WIDTH = 100
-HEIGHT = 100
-
 BIRD_X = 10
-GRAVITY = 0.5
-FLAP_STRENGTH = 8
 
-PIPE_SPEED = 0.6
+GRAVITY = 0.35
+FLAP_FORCE = 5.5
+MAX_FALL = -6
+MAX_RISE = 6
+DAMPING = 0.92
+
+PIPE_SPEED = 0.5
 PIPE_WIDTH = 6
-INITIAL_GAP = 30
-MIN_GAP = 12
+
+INITIAL_GAP = 28
+MIN_GAP = 14
 
 NUM_PIPES = 5
-PIPE_SPACING = 25
+SPACING_RATIO = 0.35   # responsive spacing
+
 
 # ---------------- STATE ----------------
-bird_y = 50
-velocity = 0
-key_pressed = False
-game_over = False
-score = 0
+class GameState:
+    def __init__(self):
+        self.bird_y = 50
+        self.velocity = 0
+        self.key_pressed = False
+        self.game_over = False
+        self.score = 0
+        self.frame = 0
+        self.pipes = []
 
 
+state = GameState()
+
+
+# ---------------- INPUT ----------------
 def on_key(event):
-    global key_pressed, game_over, bird_y, velocity, score
-
     if event.key == "x":
-        key_pressed = True
+        state.key_pressed = True
 
-    if event.key == "r" and game_over:
+    if event.key == "r" and state.game_over:
         reset_game()
 
+
+# ---------------- GAME CONTROL ----------------
 def reset_game():
-    global bird_y, velocity, game_over, score, pipes
+    global state
+    state = GameState()
+    init_pipes(100, 100)
 
-    bird_y = 50
-    velocity = 0
-    game_over = False
-    score = 0
-
-    pipes.clear()
-    init_pipes()
 
 # ---------------- PIPE SYSTEM ----------------
-pipes = []
+def generate_gap(prev_gap, gap_size, height):
+    margin = 5
+    min_y = gap_size / 2 + margin
+    max_y = height - gap_size / 2 - margin
+
+    if prev_gap is None:
+        return random.uniform(min_y, max_y)
+
+    # smooth transition (no sudden jumps)
+    new_gap = prev_gap + random.uniform(-10, 10)
+    return max(min_y, min(max_y, new_gap))
 
 
-def init_pipes():
+def init_pipes(width, height):
+    state.pipes.clear()
+    spacing = width * SPACING_RATIO
+    gap_size = INITIAL_GAP
+
+    prev_gap = None
+
     for i in range(NUM_PIPES):
-        x = WIDTH + i * PIPE_SPACING
-        gap_y = random.randint(30, 70)
-        pipes.append({"x": x, "gap_y": gap_y})
+        gap_y = generate_gap(prev_gap, gap_size, height)
+        prev_gap = gap_y
 
-def update_pipes(frame):
-    global score
+        x = width + i * spacing
 
-    # difficulty scaling
-    gap_size = max(MIN_GAP, INITIAL_GAP - frame * 0.02)
+        state.pipes.append({
+            "x": x,
+            "gap_y": gap_y,
+            "passed": False
+        })
 
-    for pipe in pipes:
+
+def update_pipes(width, height):
+    spacing = width * SPACING_RATIO
+    gap_size = max(MIN_GAP, INITIAL_GAP - state.frame * 0.01)
+
+    for pipe in state.pipes:
         pipe["x"] -= PIPE_SPEED
 
         # scoring
-        if pipe["x"] < BIRD_X and not pipe.get("passed"):
+        if pipe["x"] < BIRD_X and not pipe["passed"]:
             pipe["passed"] = True
-            score += 1
+            state.score += 1
 
-        # reset pipe (controlled loop)
-        if pipe["x"] < 10:
-            pipe["x"] = WIDTH
-            pipe["gap_y"] = random.randint(30, 70)
+        # reset pipe (maintain spacing)
+        if pipe["x"] < BIRD_X - 10:
+            max_x = max(p["x"] for p in state.pipes)
+
+            pipe["x"] = max_x + spacing
+
+            pipe["gap_y"] = generate_gap(
+                prev_gap=pipe["gap_y"],
+                gap_size=gap_size,
+                height=height
+            )
+
             pipe["passed"] = False
 
     return gap_size
 
 
-def check_collision(gap_size):
-    global bird_y
+# ---------------- COLLISION ----------------
+def check_collision(gap_size, height):
+    y = state.bird_y
 
-    for pipe in pipes:
+    for pipe in state.pipes:
         if abs(pipe["x"] - BIRD_X) < PIPE_WIDTH:
             gap_top = pipe["gap_y"] + gap_size / 2
             gap_bottom = pipe["gap_y"] - gap_size / 2
 
-            if bird_y > gap_top or bird_y < gap_bottom:
+            if y > gap_top or y < gap_bottom:
                 return True
 
-    if bird_y <= 0 or bird_y >= HEIGHT:
+    if y <= 0 or y >= height:
         return True
 
     return False
@@ -97,76 +135,79 @@ def check_collision(gap_size):
 
 # ---------------- MAIN ----------------
 def main():
-    global bird_y, velocity, key_pressed, game_over
-
     fig, ax = plt.subplots(figsize=(6, 8))
-    ax.set_xlim(0, WIDTH)
-    ax.set_ylim(0, HEIGHT)
+
+    ax.set_xlim(0, 100)
+    ax.set_ylim(0, 100)
 
     fig.canvas.mpl_connect("key_press_event", on_key)
 
-    # visuals
-    bird = ax.scatter(BIRD_X, bird_y, s=200, color="yellow")
-    text = ax.text(2, 95, "", fontsize=12)
-
-    init_pipes()
-
-    frame = 0
+    init_pipes(100, 100)
 
     try:
         while True:
-            frame += 1
+            state.frame += 1
 
-            if not game_over:
+            # dynamic dimensions (resize-safe)
+            width = ax.get_xlim()[1]
+            height = ax.get_ylim()[1]
+
+            if not state.game_over:
                 # ---------- Bird Physics ----------
-                velocity -= GRAVITY
+                state.velocity -= GRAVITY
 
-                if key_pressed:
-                    velocity = FLAP_STRENGTH
-                    key_pressed = False
+                if state.key_pressed:
+                    state.velocity += FLAP_FORCE
+                    state.key_pressed = False
 
-                bird_y += velocity
-                bird_y = max(0, min(HEIGHT, bird_y))
+                # clamp velocity
+                state.velocity = max(MAX_FALL, min(MAX_RISE, state.velocity))
+
+                # damping (smooth control)
+                state.velocity *= DAMPING
+
+                state.bird_y += state.velocity
+                state.bird_y = max(0, min(height, state.bird_y))
 
                 # ---------- Pipes ----------
-                gap_size = update_pipes(frame)
+                gap_size = update_pipes(width, height)
 
                 # ---------- Collision ----------
-                if check_collision(gap_size):
-                    game_over = True
+                if check_collision(gap_size, height):
+                    state.game_over = True
+
+            else:
+                gap_size = max(MIN_GAP, INITIAL_GAP - state.frame * 0.01)
 
             # ---------- Render ----------
             ax.clear()
-            ax.set_xlim(0, WIDTH)
-            ax.set_ylim(0, HEIGHT)
+            ax.set_xlim(0, width)
+            ax.set_ylim(0, height)
 
-            # draw bird
-            ax.scatter(BIRD_X, bird_y, s=200, color="yellow")
+            # bird
+            ax.scatter(BIRD_X, state.bird_y, s=200)
 
-            # draw pipes
-            for pipe in pipes:
+            # pipes
+            for pipe in state.pipes:
                 x = pipe["x"]
                 gap_y = pipe["gap_y"]
 
                 gap_top = gap_y + gap_size / 2
                 gap_bottom = gap_y - gap_size / 2
 
-                # bottom pipe
                 ax.bar(x, gap_bottom, width=PIPE_WIDTH)
-
-                # top pipe
                 ax.bar(
                     x,
-                    HEIGHT - gap_top,
+                    height - gap_top,
                     bottom=gap_top,
-                    width=PIPE_WIDTH,
+                    width=PIPE_WIDTH
                 )
 
             # UI
-            ax.text(2, 95, f"Score: {score}")
+            ax.text(2, height - 5, f"Score: {state.score}")
 
-            if game_over:
-                ax.text(30, 50, "GAME OVER\nPress R to Restart")
+            if state.game_over:
+                ax.text(width / 3, height / 2, "GAME OVER\nPress R")
 
             plt.pause(0.01)
 
