@@ -22,6 +22,10 @@ SPACING_RATIO = 0.35   # responsive spacing
 
 
 # ---------------- STATE ----------------
+
+
+
+
 class GameState:
     def __init__(self):
         self.bird_y = 50
@@ -99,7 +103,7 @@ def update_pipes(width, height):
             state.score += 1
 
         # reset pipe (maintain spacing)
-        if pipe["x"] < BIRD_X - 10:
+        if pipe["x"] + PIPE_WIDTH < 0:
             max_x = max(p["x"] for p in state.pipes)
 
             pipe["x"] = max_x + spacing
@@ -120,9 +124,11 @@ def check_collision(gap_size, height):
     y = state.bird_y
 
     for pipe in state.pipes:
-        if abs(pipe["x"] - BIRD_X) < PIPE_WIDTH:
-            gap_top = pipe["gap_y"] + gap_size / 2
-            gap_bottom = pipe["gap_y"] - gap_size / 2
+        pipe_left = pipe["x"]
+        pipe_right = pipe["x"] + PIPE_WIDTH
+        if pipe_left <= BIRD_X <= pipe_right:
+            gap_top = min(height, gap_y + gap_size / 2)
+            gap_bottom = max(0, gap_y - gap_size / 2)
 
             if y > gap_top or y < gap_bottom:
                 return True
@@ -136,10 +142,10 @@ def check_collision(gap_size, height):
 # ---------------- MAIN ----------------
 def main():
     fig, ax = plt.subplots(figsize=(6, 8))
-
+    ax.set_aspect('equal', adjustable='box')
     ax.set_xlim(0, 100)
     ax.set_ylim(0, 100)
-
+    ax.set_autoscale_on(False)
     fig.canvas.mpl_connect("key_press_event", on_key)
 
     init_pipes(100, 100)
